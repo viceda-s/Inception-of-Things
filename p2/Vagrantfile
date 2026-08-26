@@ -10,6 +10,6 @@ Vagrant.configure("2") do |config|
             vb.cpus = 1
         end
 
-        #server.vm.provision "shell", path: "scripts/install_k3s.sh"
+        server.vm.provision "shell", path: "scripts/install_k3s.sh"
     end
 end
