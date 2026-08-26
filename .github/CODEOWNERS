@@ -1,0 +1,12 @@
+# Code ownership for Inception-of-Things.
+# GitHub requests a review from the matching owner(s) automatically
+# when a pull request touches these paths.
+# See: https://docs.github.com/articles/about-code-owners
+
+/p1/            @luis-fif
+/p2/            @brunmart
+/p3/            @viceda-s
+/bonus/         @luis-fif @brunmart @viceda-s
+/docs/part1.md  @luis-fif
+/docs/part2.md  @brunmart
+/docs/part3.md  @viceda-s
