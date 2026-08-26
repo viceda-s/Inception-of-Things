@@ -1,0 +1,39 @@
+# --- Vagrant ---
+.vagrant
+.vagrant.d
+
+# --- Kubernetes ---
+*.kubeconfig
+kubeconfig
+*.kubeconfig.*
+*.minikube
+
+# --- Docker / K3d ---
+*.tar
+*.tar.gz
+*.log
+
+# --- Logs and temp files ---
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# --- IDE / editors ---
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Scripts-generated artifacts (if any) ---
+# e.g. local certs, tokens, etc.
+*.key
+*.pem
+*.crt
+*.secret
