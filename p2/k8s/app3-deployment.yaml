@@ -1,0 +1,25 @@
+apiVersion: apps/v1        # Deployment lives in the apps/v1 API group (workload resources)
+kind: Deployment
+metadata:
+  name: app3-deployment
+  namespace: apps           # created in Issue #3 — keeps all Part 2 resources together
+  labels:
+    app.kubernetes.io/name: app3
+    app.kubernetes.io/part-of: p2
+spec:
+  replicas: 1               # app3 acts as the default backend, 1 pod is enough
+  selector:
+    matchLabels:
+      app: app3              # tells the Deployment which pods it "owns" — must match template labels below
+  template:                  # the blueprint used to create each Pod
+    metadata:
+      labels:
+        app: app3             # actual label applied to pods — the Service will select on this
+    spec:
+      containers:
+        - name: app3
+          image: hashicorp/http-echo
+          args:
+            - "-text=Hello from App3"   # the fixed response text this "app" returns
+          ports:
+            - containerPort: 5678       # http-echo listens on 5678 by default
