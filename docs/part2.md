@@ -65,6 +65,11 @@ Physical machine
 
 Defined in [`p2/Vagrantfile`](../p2/Vagrantfile).
 
+> **rsync does not auto-sync.** Editing files on the outer VM after `vagrant up` does not
+> propagate into `brunmartS` automatically. Run `vagrant rsync` (or `vagrant reload`) from the
+> outer VM's `p2/` directory whenever you change a manifest or script, or `brunmartS` will keep
+> serving stale files. Full details in **Troubleshooting** below.
+
 ## K3s configuration
 
 - Installed via [`p2/scripts/install_k3s.sh`](../p2/scripts/install_k3s.sh), run automatically as
@@ -142,6 +147,10 @@ vagrant up          # provisions brunmartS: static IP, K3s server, kubectl — f
 vagrant ssh          # opens a shell inside brunmartS
 ```
 
+`vagrant up` typically takes 2-3 minutes (VM boot, K3s install, waiting for `Ready`). If it's been
+running far longer than that with no output change, something's wrong — check the provisioner
+output for errors rather than assuming it's just slow.
+
 Inside `brunmartS`:
 
 ```bash
@@ -157,7 +166,9 @@ sudo kubectl apply -f k8s/
 sudo kubectl get all -n apps
 ```
 
-Expected: 5 pods total (1× app1, 3× app2, 1× app3), all `1/1 Running`; 3 Services; 1 Ingress.
+Expected: 5 pods total (1× app1, 3× app2, 1× app3), all `1/1 Running`; 3 Services; 1 Ingress. Pods
+typically reach `Running` within seconds since `http-echo` is a tiny image; if one sits in
+`Pending`/`ContainerCreating` for more than ~30s, check `sudo kubectl describe pod <name> -n apps`.
 
 ### Local host resolution (optional, for browser/`curl` without `-H`)
 
@@ -198,9 +209,19 @@ sudo kubectl logs -n apps -l app=app2 --prefix -f
 for i in $(seq 1 15); do curl -s -H "Host: app2.com" http://192.168.56.110 > /dev/null; done
 ```
 
-Result: requests landed on all three pods in a round-robin pattern
-(`...-mmjqk` → `...-fxbpq` → `...-rgdr4` → repeat), confirming Traefik spreads load across every
-replica rather than pinning to one.
+Result — actual captured log lines, one per request, in order:
+
+```
+[pod/app2-deployment-65974c8975-mmjqk/app2] ... "GET / HTTP/1.1" 200
+[pod/app2-deployment-65974c8975-fxbpq/app2] ... "GET / HTTP/1.1" 200
+[pod/app2-deployment-65974c8975-rgdr4/app2] ... "GET / HTTP/1.1" 200
+[pod/app2-deployment-65974c8975-mmjqk/app2] ... "GET / HTTP/1.1" 200
+[pod/app2-deployment-65974c8975-fxbpq/app2] ... "GET / HTTP/1.1" 200
+[pod/app2-deployment-65974c8975-rgdr4/app2] ... "GET / HTTP/1.1" 200
+```
+
+Requests cycle through `mmjqk` → `fxbpq` → `rgdr4` → repeat, confirming Traefik spreads load
+across every replica in round-robin fashion rather than pinning to one.
 
 **Self-healing (failure & recovery):**
 
