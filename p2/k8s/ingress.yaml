@@ -5,9 +5,8 @@ metadata:
   namespace: apps            # same namespace as the three app Services
   labels:
     app.kubernetes.io/part-of: p2
-  annotations:
-    kubernetes.io/ingress.class: traefik   # explicit, though Traefik is K3s's default controller
 spec:
+  ingressClassName: traefik   # Traefik is K3s's bundled default controller
   # No host rule matches here, so this is where every non-app1/app2 Host header lands.
   defaultBackend:
     service:
