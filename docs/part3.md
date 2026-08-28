@@ -10,6 +10,26 @@ Create a local K3d-based Kubernetes cluster, install ArgoCD, and manage an appli
 - Use K3d to create a Kubernetes cluster.
 - Install `kubectl` and configure it to talk to the K3d cluster.
 
+### Cluster creation and deletion
+
+`p3/scripts/create-cluster.sh` creates a single-node K3d cluster named `iot-p3` (one K3s server, no agents — enough for ArgoCD plus one application across the two namespaces below). Host port `8888` is published through K3d's load balancer so the app is reachable at `http://localhost:8888/`, matching the port used by Wil's playground application.
+
+The script is safe to re-run: if a cluster named `iot-p3` already exists it is deleted and recreated, then `kubectl`'s context is set to `k3d-iot-p3` and the script waits for the node and `kube-system` pods to be ready.
+
+```bash
+# Create (or safely recreate) the cluster
+./p3/scripts/create-cluster.sh
+
+# Delete the cluster manually
+k3d cluster delete iot-p3
+
+# Verify
+k3d cluster list
+kubectl config current-context
+kubectl get nodes -o wide
+kubectl get pods -A
+```
+
 ## Namespaces
 
 Create two namespaces:
