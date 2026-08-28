@@ -32,10 +32,22 @@ kubectl get pods -A
 
 ## Namespaces
 
-Create two namespaces:
+`p3/scripts/create-namespaces.sh` applies `p3/confs/namespaces.yaml`, creating:
 
 - `argocd` – for the ArgoCD control plane components.
 - `dev` – for the application managed by ArgoCD.
+
+This manifest is kept in `p3/confs/` rather than `p3/k8s/`, since `p3/k8s/` is the ArgoCD
+Application source path — placing it there would make ArgoCD manage and prune the
+namespaces (including its own) against the `dev` destination.
+
+```bash
+# Create the namespaces
+./p3/scripts/create-namespaces.sh
+
+# Verify
+kubectl get namespace argocd dev
+```
 
 ## Application
 
