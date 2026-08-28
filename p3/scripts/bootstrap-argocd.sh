@@ -83,6 +83,22 @@ kubectl rollout status \
     -n "${ARGOCD_NAMESPACE}" \
     --timeout="${WAIT_TIMEOUT}s"
 
+echo "==> Applying ArgoCD Application manifest"
+
+APPLICATION_MANIFEST="$(dirname "${BASH_SOURCE[0]}")/../confs/application.yaml"
+
+kubectl apply -f "${APPLICATION_MANIFEST}"
+
+echo "==> Waiting for Application 'playground' to sync"
+
+kubectl wait \
+    --for=jsonpath='{.status.sync.status}'=Synced \
+    application/playground \
+    -n "${ARGOCD_NAMESPACE}" \
+    --timeout="${WAIT_TIMEOUT}s"
+
+echo "==> Application sync complete"
+
 echo "==> ArgoCD installation complete"
 
 echo
