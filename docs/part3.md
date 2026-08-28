@@ -78,7 +78,10 @@ The image update from `v1` to `v2` requires changing only the image tag in
 + image: wil42/playground:v2
 ```
 
-Apply and verify the application resources:
+Once ArgoCD is bootstrapped (see [ArgoCD Application](#argocd-application)), it
+applies and keeps these resources in sync automatically — no manual `kubectl apply`
+is needed. To apply them directly instead (e.g. before ArgoCD is set up, or while
+iterating on the manifests):
 
 ```bash
 kubectl apply -f p3/k8s/
@@ -169,21 +172,43 @@ kubectl get events -n argocd --sort-by=.metadata.creationTimestamp
 ./p3/scripts/bootstrap-argocd.sh
 ```
 
-Once ArgoCD is healthy, create an ArgoCD Application that:
+## ArgoCD Application
 
-- Points to this GitHub repository.
-- Uses `p3/k8s/` as the path.
-- Targets the `dev` namespace in the K3d cluster.
+`p3/confs/application.yaml` defines the ArgoCD `Application` resource that connects
+this GitHub repository to the `dev` namespace:
+
+- `spec.source.repoURL` – `https://github.com/viceda-s/Inception-of-Things.git`
+- `spec.source.targetRevision` – `main`, this project's only long-lived branch.
+- `spec.source.path` – `p3/k8s`, containing only the application resources.
+- `spec.destination` – the in-cluster API server, namespace `dev`.
+- `spec.syncPolicy.automated` – `prune: true` and `selfHeal: true`, so ArgoCD
+  applies new commits automatically and reverts manual drift, without a
+  `kubectl apply -f p3/k8s/` step.
+- `syncOptions: [CreateNamespace=false]` – `dev` is already created by
+  `create-namespaces.sh`; ArgoCD only manages the application resources inside it.
+
+Like the `p3/k8s/` manifests, this file lives outside `p3/k8s/` (in `p3/confs/`)
+so ArgoCD does not try to manage or prune itself.
+
+`p3/scripts/bootstrap-argocd.sh` applies this manifest once ArgoCD's Deployments
+and StatefulSet are ready, then waits for the Application to report `Synced`:
+
+```bash
+kubectl get applications -n argocd
+kubectl describe application playground -n argocd
+```
 
 ## GitOps flow
 
 1. `p3/k8s/deployment.yaml` references `wil42/playground:v1`.
-2. ArgoCD synchronizes the resources from `p3/k8s/` into the `dev` namespace.
+2. ArgoCD's `playground` Application (`p3/confs/application.yaml`) automatically
+   synchronizes the resources from `p3/k8s/` into the `dev` namespace.
 3. The Deployment becomes ready after its HTTP readiness probe succeeds.
 4. The application endpoint returns version `v1`.
 5. Change only the image tag in `p3/k8s/deployment.yaml` from `v1` to `v2`.
 6. Commit and push the change to GitHub.
-7. ArgoCD detects the change and synchronizes the new Deployment.
+7. ArgoCD detects the change and automatically synchronizes the new Deployment —
+   no manual `kubectl apply` is needed.
 8. The application endpoint returns version `v2`.
 
 ## Verification

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: playground
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: playground
+    app.kubernetes.io/part-of: p3
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/viceda-s/Inception-of-Things.git
+    targetRevision: main
+    path: p3/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
