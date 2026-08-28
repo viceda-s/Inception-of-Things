@@ -51,11 +51,71 @@ kubectl get namespace argocd dev
 
 ## Application
 
-Deploy an application in the `dev` namespace using manifests stored in `p3/k8s/`:
+Deploy the `playground` application in the `dev` namespace using manifests stored in
+`p3/k8s/`.
 
-- `deployment.yaml` – Deployment using a container image with tags `v1` and `v2`.
-- `service.yaml` – Service exposing the application inside the cluster.
-- `ingress.yaml` – optional Ingress or port-forwarding to access the app.
+The directory contains only application resources managed by ArgoCD:
+
+- `deployment.yaml` – Runs one `playground` replica using `wil42/playground:v1`
+  on container port `8888`.
+- `service.yaml` – Exposes the application internally on port `8888`.
+- `ingress.yaml` – Optional; not required when using the K3d host port or
+  `kubectl port-forward`.
+
+All resources use the following labels and selectors:
+
+```yaml
+app.kubernetes.io/name: playground
+app.kubernetes.io/part-of: p3
+```
+
+The Deployment defines HTTP readiness and liveness probes against `/` on port `8888`.
+The image update from `v1` to `v2` requires changing only the image tag in
+`p3/k8s/deployment.yaml`:
+
+```diff
+- image: wil42/playground:v1
++ image: wil42/playground:v2
+```
+
+Apply and verify the application resources:
+
+```bash
+kubectl apply -f p3/k8s/
+kubectl rollout status deployment/playground -n dev
+kubectl get deployment,pods,svc -n dev
+```
+
+Access the Service with port-forwarding:
+
+```bash
+kubectl port-forward -n dev svc/playground 8888:8888
+```
+
+In another terminal, verify version `v1`:
+
+```bash
+curl http://localhost:8888/
+```
+
+Expected response:
+
+```json
+{"status":"ok","message":"v1"}
+```
+
+After changing the image tag to `v2`, commit and push the change. ArgoCD should
+detect the Git change and synchronize the Deployment. Verify the new version with:
+
+```bash
+curl http://localhost:8888/
+```
+
+Expected response after synchronization:
+
+```json
+{"status":"ok","message":"v2"}
+```
 
 ## ArgoCD configuration
 
@@ -117,10 +177,22 @@ Once ArgoCD is healthy, create an ArgoCD Application that:
 
 ## GitOps flow
 
-1. Application manifests in `p3/k8s/` reference image tag `v1`.
-2. ArgoCD syncs the manifests, and the running application responds as version `v1`.
-3. You change the image tag in `deployment.yaml` to `v2`, commit, and push.
-4. ArgoCD detects the change and syncs, updating the running app to version `v2`.
+1. `p3/k8s/deployment.yaml` references `wil42/playground:v1`.
+2. ArgoCD synchronizes the resources from `p3/k8s/` into the `dev` namespace.
+3. The Deployment becomes ready after its HTTP readiness probe succeeds.
+4. The application endpoint returns version `v1`.
+5. Change only the image tag in `p3/k8s/deployment.yaml` from `v1` to `v2`.
+6. Commit and push the change to GitHub.
+7. ArgoCD detects the change and synchronizes the new Deployment.
+8. The application endpoint returns version `v2`.
+
+## Verification
+
+- ArgoCD shows the application as `Synced` and `Healthy`.
+- `kubectl rollout status deployment/playground -n dev` completes successfully.
+- `kubectl get pods -n dev` shows the application Pod as `Running` and `Ready`.
+- `curl http://localhost:8888/` returns version `v1`.
+- After the GitOps image update, the same endpoint returns version `v2`.
 
 ## Verification
 
