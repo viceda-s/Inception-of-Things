@@ -7,12 +7,9 @@ metadata:
     app.kubernetes.io/part-of: p2
 spec:
   ingressClassName: traefik   # Traefik is K3s's bundled default controller
-  # No host rule matches here, so this is where every non-app1/app2 Host header lands.
-  defaultBackend:
-    service:
-      name: app3-service
-      port:
-        number: 80
+  # spec.defaultBackend is unreliable with K3s's bundled Traefik for
+  # host-based Ingress (see https://github.com/traefik/traefik/issues/6082);
+  # a host-less catch-all rule works reliably instead, so app3 gets one below.
   rules:
     - host: app1.com
       http:
@@ -32,5 +29,14 @@ spec:
             backend:
               service:
                 name: app2-service
+                port:
+                  number: 80
+    - http:                    # no host: matches any Host header not matched above
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app3-service
                 port:
                   number: 80
