@@ -193,8 +193,3 @@ Once ArgoCD is healthy, create an ArgoCD Application that:
 - `kubectl get pods -n dev` shows the application Pod as `Running` and `Ready`.
 - `curl http://localhost:8888/` returns version `v1`.
 - After the GitOps image update, the same endpoint returns version `v2`.
-
-## Verification
-
-- ArgoCD shows the application as Synced and Healthy.
-- Calling the application endpoint shows version `v1`, then `v2` after the update.
