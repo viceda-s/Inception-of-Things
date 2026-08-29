@@ -3,11 +3,14 @@ set -euo pipefail  # exit on error/unset var, fail pipelines if any stage fails
 
 # Part 3 K3d cluster configuration.
 # The cluster uses one K3s server and no agents to keep the mandatory setup minimal.
-# Port 8888 on the host is forwarded through K3d's load balancer to the cluster,
-# matching the app port used by the subject's "curl http://localhost:8888/" check.
+# Host port 8888 is forwarded through K3d's load balancer to Traefik's HTTP entrypoint
+# (port 80 in-cluster), matching the app port used by the subject's
+# "curl http://localhost:8888/" check. Routing from there to the playground Service
+# is done by the Ingress in p3/k8s/ingress.yaml, applied by ArgoCD.
 CLUSTER_NAME="iot-p3"
 CLUSTER_CONTEXT="k3d-${CLUSTER_NAME}"
 APP_PORT="8888"
+TRAEFIK_HTTP_PORT="80"
 NODE_WAIT_TIMEOUT="180s"
 
 echo "==> Checking required commands..."
@@ -35,7 +38,7 @@ echo "==> Creating K3d cluster '${CLUSTER_NAME}'..."
 k3d cluster create "${CLUSTER_NAME}" \
   --servers 1 \
   --agents 0 \
-  --port "${APP_PORT}:${APP_PORT}@loadbalancer" \
+  --port "${APP_PORT}:${TRAEFIK_HTTP_PORT}@loadbalancer" \
   --wait
 
 echo "==> Selecting kubectl context '${CLUSTER_CONTEXT}'..."
@@ -71,5 +74,5 @@ echo
 echo "==> Pods (all namespaces):"
 kubectl get pods -A
 echo
-echo "==> Host port ${APP_PORT} is mapped to the K3d load balancer."
-echo "==> Once the app is deployed, it will be reachable at http://localhost:${APP_PORT}/"
+echo "==> Host port ${APP_PORT} is mapped to Traefik's HTTP entrypoint on the K3d load balancer."
+echo "==> Once the app and its Ingress are deployed, it will be reachable at http://localhost:${APP_PORT}/"
