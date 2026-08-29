@@ -1,0 +1,51 @@
+name: ShellCheck
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/shellcheck.yml'
+      - '.shellcheckrc'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/shellcheck.yml'
+      - '.shellcheckrc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Shell script quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Bash syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r -d '' script; do
+            echo "==> Checking syntax: ${script}"
+            bash -n "${script}"
+          done < <(
+            find . \
+              -path './.git' -prune -o \
+              -path './.github' -prune -o \
+              -type f -name '*.sh' -print0
+          )
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: '.'
+          severity: warning
