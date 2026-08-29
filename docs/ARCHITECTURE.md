@@ -40,6 +40,46 @@ A K3d cluster runs on a virtual machine with Docker installed. Two namespaces ar
 
 ArgoCD is configured with an Application that points to this GitHub repository and syncs Kubernetes manifests from `p3/k8s/` into the `dev` namespace.
 
+#### K3s vs. K3d
+
+The subject asks that this distinction be understood explicitly, since Part 1/2 use one and Part 3 uses the other:
+
+- **K3s** is a lightweight Kubernetes *distribution* — a single binary that runs the API server, scheduler, controller-manager, kubelet, and a default CNI/Ingress/storage stack, meant to run directly on a VM or bare-metal host. Parts 1 and 2 install K3s straight onto Vagrant VMs.
+- **K3d** is a *wrapper* that runs K3s **inside Docker containers** instead of on the host directly: each "node" (server or agent) is a container, and cluster lifecycle (`k3d cluster create/delete`) is just container lifecycle. Part 3 uses K3d specifically so the whole cluster can be created and destroyed on a single VM without Vagrant, using only Docker.
+
+In short: K3d does not replace K3s, it packages K3s to run as Docker containers — the cluster you get is still K3s underneath (`kubectl get nodes` reports a K3s version), just started and torn down through Docker rather than installed on the host OS.
+
+#### Architecture diagram
+
+```text
+Virtual Machine (Ubuntu, Docker installed)
+│
+└── Docker
+    │
+    └── K3d cluster "iot-p3"  (K3s running in Docker containers)
+        │
+        ├── k3d-iot-p3-server-0        — K3s server container (control plane + kubelet)
+        ├── k3d-iot-p3-serverlb        — K3d load balancer container
+        │     └── host port 8888 ──▶ container port 80 (Traefik HTTP entrypoint)
+        │
+        ├── namespace: kube-system     — CoreDNS, Traefik, metrics-server, local-path-provisioner
+        │
+        ├── namespace: argocd          — ArgoCD control plane
+        │     └── Application "playground" watches this GitHub repo (p3/k8s/, branch main)
+        │
+        └── namespace: dev             — GitOps-managed application
+              ├── Deployment "playground"  (wil42/playground:v1 or :v2)
+              ├── Service "playground"     (ClusterIP, port 8888)
+              └── Ingress "playground"     (Traefik, routes / → Service)
+```
+
+Request path for `curl http://localhost:8888/`:
+
+```text
+host:8888 → k3d-iot-p3-serverlb:80 → Traefik (kube-system) → Ingress "playground" (dev)
+          → Service "playground" (dev) → Pod "playground" (dev), container port 8888
+```
+
 ## GitOps workflow (Part 3)
 
 The GitOps flow is:
